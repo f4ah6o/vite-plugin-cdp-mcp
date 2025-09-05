@@ -53,6 +53,23 @@ export class CircularBuffer<T> {
     this.items = new Array(this.capacity)
     this.nextIndex = 0
   }
+
+  // Expose configured capacity
+  capacity(): number {
+    return this.capacity
+  }
+
+  // Replace first item matching predicate; returns true if replaced
+  replaceFirst(predicate: (item: T) => boolean, newItem: T): boolean {
+    for (let i = 0; i < this.items.length; i++) {
+      const item = this.items[i]
+      if (item !== undefined && predicate(item)) {
+        this.items[i] = newItem
+        return true
+      }
+    }
+    return false
+  }
 }
 
 export class BufferManager {
@@ -102,19 +119,14 @@ export class BufferManager {
 
   // Network buffer methods
   addNetworkRequest(request: StatefulNetworkRequest): void {
-    // Check if request already exists and update it
-    const existingIndex = this.findNetworkRequestIndex(request.requestId)
-    if (existingIndex !== -1) {
-      const allRequests = this.networkBuffer.getAll()
-      allRequests[existingIndex] = request
-    } else {
+    // Update existing request if present; otherwise add new
+    const replaced = this.networkBuffer.replaceFirst(
+      (req) => req.requestId === request.requestId,
+      request,
+    )
+    if (!replaced) {
       this.networkBuffer.add(request)
     }
-  }
-
-  private findNetworkRequestIndex(requestId: string): number {
-    const requests = this.networkBuffer.getAll()
-    return requests.findIndex((req) => req?.requestId === requestId)
   }
 
   queryNetworkRequests(options: QueryOptions = {}): {
@@ -171,11 +183,11 @@ export class BufferManager {
     return {
       console: {
         size: this.consoleBuffer.size(),
-        capacity: 1000, // From data model spec
+        capacity: this.consoleBuffer.capacity(),
       },
       network: {
         size: this.networkBuffer.size(),
-        capacity: 100, // From data model spec
+        capacity: this.networkBuffer.capacity(),
       },
     }
   }

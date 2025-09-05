@@ -29,6 +29,13 @@
     "chrome-devtools-protocol",
     "model-context-protocol"
   ],
+  "scripts": {
+    "lint": "biome lint .",
+    "format": "biome format . --write",
+    "check": "biome check .",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.5",
     "chrome-remote-interface": "^0.33.3",

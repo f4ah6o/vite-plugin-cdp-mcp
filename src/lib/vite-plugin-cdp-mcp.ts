@@ -75,34 +75,10 @@ export default function cdpMcpPlugin(userConfig: PluginConfig = {}): Plugin {
           }
 
           // Handle HTTP requests for MCP server
-          if (req.method === 'POST') {
-            let body = ''
-            req.on('data', (chunk) => {
-              body += chunk
-            })
-
-            req.on('end', async () => {
-              try {
-                const request = JSON.parse(body)
-                const response = await mcpServer.handleRequest(request)
-
-                res.setHeader('Content-Type', 'application/json')
-                res.setHeader('Access-Control-Allow-Origin', '*')
-                res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
-                res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-
-                res.end(JSON.stringify(response))
-              } catch (error) {
-                res.statusCode = 500
-                res.setHeader('Content-Type', 'application/json')
-                res.end(
-                  JSON.stringify({
-                    error: 'Internal server error',
-                    details: error instanceof Error ? error.message : 'Unknown error',
-                  }),
-                )
-              }
-            })
+          if (req.method === 'POST' || req.method === 'GET' || req.method === 'DELETE') {
+            // Delegate to Streamable HTTP transport
+            await mcpServer.handleHttpRequest(req, res)
+            return
           } else if (req.method === 'OPTIONS') {
             // Handle CORS preflight
             res.setHeader('Access-Control-Allow-Origin', '*')
@@ -110,21 +86,6 @@ export default function cdpMcpPlugin(userConfig: PluginConfig = {}): Plugin {
             res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
             res.statusCode = 200
             res.end()
-          } else if (req.method === 'GET') {
-            // Return server info for GET requests
-            res.setHeader('Content-Type', 'application/json')
-            res.setHeader('Access-Control-Allow-Origin', '*')
-            res.end(
-              JSON.stringify({
-                name: 'vite-plugin-cdp-mcp',
-                version: '0.1.0',
-                status: 'running',
-                endpoints: {
-                  mcp: config.mcpPath,
-                  health: `${config.mcpPath}/health`,
-                },
-              }),
-            )
           } else {
             next()
           }

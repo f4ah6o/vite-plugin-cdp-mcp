@@ -29,6 +29,7 @@
     "chrome-devtools-protocol",
     "model-context-protocol"
   ],
+  "packageManager": "pnpm@10.15.1",
   "scripts": {
     "lint": "biome lint .",
     "format": "biome format . --write",

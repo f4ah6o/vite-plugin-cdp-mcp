@@ -10,7 +10,7 @@ const outputSchema = cdpNetworkTail.outputSchema
 
 function formatErrors(errors: ErrorObject[] | null | undefined): string {
   if (!errors || errors.length === 0) return ''
-  return errors.map((e) => `${e.instancePath} ${e.message}`).join('; ')
+  return errors.map((e) => `${e.instancePath} [${e.keyword}] ${e.message}`).join('; ')
 }
 
 describe('T005 Contract: cdp.network.tail schemas', () => {

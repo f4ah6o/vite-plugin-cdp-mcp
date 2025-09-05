@@ -52,105 +52,113 @@ export class MCPTools {
   }
 
   private setupCDPListeners(): void {
-    // Console message listener
-    this.cdpClient.onConsoleMessage((message: any) => {
-      try {
-        const consoleEntry = createConsoleEntry({
-          level:
-            message.level === 'log'
-              ? 'log'
-              : message.level === 'warning'
-                ? 'warn'
-                : message.level === 'error'
-                  ? 'error'
-                  : message.level === 'info'
-                    ? 'info'
-                    : message.level === 'debug'
-                      ? 'debug'
-                      : 'log',
-          timestamp: Date.now(),
-          message: message.text || '',
-          source:
-            message.url && message.line
-              ? `${message.url}:${message.line}:${message.column || 0}`
-              : 'unknown',
-        })
-
-        const bufferedEntry = toBuffered(consoleEntry)
-        this.bufferManager.addConsoleEntry(bufferedEntry)
-      } catch (error) {
-        console.warn('Failed to process console message:', error)
-      }
-    })
-
-    // Network request listener
-    this.cdpClient.onNetworkRequest((event: any) => {
-      try {
-        if (event.type === 'requestWillBeSent') {
-          const networkRequest = createNetworkRequest({
-            requestId: event.requestId,
-            url: event.request.url,
-            method: event.request.method,
-            origin: event.request.headers?.referer || event.request.url,
+    // Console message listener (gracefully skip if CDP not connected)
+    try {
+      this.cdpClient.onConsoleMessage((message: any) => {
+        try {
+          const consoleEntry = createConsoleEntry({
+            level:
+              message.level === 'log'
+                ? 'log'
+                : message.level === 'warning'
+                  ? 'warn'
+                  : message.level === 'error'
+                    ? 'error'
+                    : message.level === 'info'
+                      ? 'info'
+                      : message.level === 'debug'
+                        ? 'debug'
+                        : 'log',
             timestamp: Date.now(),
-            requestHeaders: event.request.headers || {},
-            failed: false,
+            message: message.text || '',
+            source:
+              message.url && message.line
+                ? `${message.url}:${message.line}:${message.column || 0}`
+                : 'unknown',
           })
 
-          this.bufferManager.addNetworkRequest(networkRequest)
-        } else if (event.type === 'responseReceived') {
-          // Find existing request and update it
-          const requests = this.bufferManager.queryNetworkRequests().requests
-          const existingRequest = requests.find((req) => req.requestId === event.requestId)
+          const bufferedEntry = toBuffered(consoleEntry)
+          this.bufferManager.addConsoleEntry(bufferedEntry)
+        } catch (error) {
+          console.warn('Failed to process console message:', error)
+        }
+      })
+    } catch {
+      // CDP not connected; listeners will be attached after connect
+    }
 
-          if (existingRequest) {
-            const updatedRequest = toUpdated(
-              createNetworkRequest({
-                ...existingRequest,
-                status: event.response.status,
-                responseHeaders: event.response.headers || {},
-              }),
-            )
-            this.bufferManager.addNetworkRequest(updatedRequest)
-          }
-        } else if (event.type === 'requestFinished') {
-          // Mark request as completed
-          const requests = this.bufferManager.queryNetworkRequests().requests
-          const existingRequest = requests.find((req) => req.requestId === event.requestId)
+    // Network request listener (gracefully skip if CDP not connected)
+    try {
+      this.cdpClient.onNetworkRequest((event: any) => {
+        try {
+          if (event.type === 'requestWillBeSent') {
+            const networkRequest = createNetworkRequest({
+              requestId: event.requestId,
+              url: event.request.url,
+              method: event.request.method,
+              origin: event.request.headers?.referer || event.request.url,
+              timestamp: Date.now(),
+              requestHeaders: event.request.headers || {},
+              failed: false,
+            })
 
-          if (existingRequest) {
-            const completedRequest = toCompleted(
-              toUpdated(
+            this.bufferManager.addNetworkRequest(networkRequest)
+          } else if (event.type === 'responseReceived') {
+            // Find existing request and update it
+            const requests = this.bufferManager.queryNetworkRequests().requests
+            const existingRequest = requests.find((req) => req.requestId === event.requestId)
+
+            if (existingRequest) {
+              const updatedRequest = toUpdated(
                 createNetworkRequest({
                   ...existingRequest,
-                  duration: event.encodedDataLength
-                    ? Date.now() - existingRequest.timestamp
-                    : undefined,
+                  status: event.response.status,
+                  responseHeaders: event.response.headers || {},
                 }),
-              ),
-            )
-            this.bufferManager.addNetworkRequest(completedRequest)
-          }
-        } else if (event.type === 'requestFailed') {
-          // Mark request as failed
-          const requests = this.bufferManager.queryNetworkRequests().requests
-          const existingRequest = requests.find((req) => req.requestId === event.requestId)
+              )
+              this.bufferManager.addNetworkRequest(updatedRequest)
+            }
+          } else if (event.type === 'requestFinished') {
+            // Mark request as completed
+            const requests = this.bufferManager.queryNetworkRequests().requests
+            const existingRequest = requests.find((req) => req.requestId === event.requestId)
 
-          if (existingRequest) {
-            const failedRequest = toFailed(
-              createNetworkRequest({
-                ...existingRequest,
-                failed: true,
-                duration: Date.now() - existingRequest.timestamp,
-              }),
-            )
-            this.bufferManager.addNetworkRequest(failedRequest)
+            if (existingRequest) {
+              const completedRequest = toCompleted(
+                toUpdated(
+                  createNetworkRequest({
+                    ...existingRequest,
+                    duration: event.encodedDataLength
+                      ? Date.now() - existingRequest.timestamp
+                      : undefined,
+                  }),
+                ),
+              )
+              this.bufferManager.addNetworkRequest(completedRequest)
+            }
+          } else if (event.type === 'requestFailed') {
+            // Mark request as failed
+            const requests = this.bufferManager.queryNetworkRequests().requests
+            const existingRequest = requests.find((req) => req.requestId === event.requestId)
+
+            if (existingRequest) {
+              const failedRequest = toFailed(
+                createNetworkRequest({
+                  ...existingRequest,
+                  failed: true,
+                  duration: Date.now() - existingRequest.timestamp,
+                }),
+              )
+              this.bufferManager.addNetworkRequest(failedRequest)
+            }
           }
+        } catch (error) {
+          console.warn('Failed to process network event:', error)
         }
-      } catch (error) {
-        console.warn('Failed to process network event:', error)
-      }
-    })
+      })
+    } catch {
+      // CDP not connected; listeners will be attached after connect
+    }
   }
 
   async handleConsoleTail(args: any): Promise<any> {

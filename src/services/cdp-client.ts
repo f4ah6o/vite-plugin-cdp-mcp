@@ -135,8 +135,8 @@ export class CDPClient {
   private reconnectDelay: number
   private connectionTimeout: number
   private connectionStartTime?: number
-  private consoleListeners: Set<ConsoleMessageCallback> = new Set()
-  private networkListeners: Set<NetworkEventCallback> = new Set()
+  private consoleListeners: ConsoleMessageCallback[] = []
+  private networkListeners: NetworkEventCallback[] = []
   private consoleHandlerAttached = false
   private networkHandlerAttached = false
 
@@ -207,6 +207,18 @@ export class CDPClient {
       this.setupEventHandlers()
     } catch (error) {
       await this.handleConnectionError(error)
+    }
+  }
+
+  private async withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+    let timeoutHandle: NodeJS.Timeout | null = null
+    try {
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutHandle = setTimeout(() => reject(new Error(message)), timeoutMs)
+      })
+      return await Promise.race([promise, timeoutPromise])
+    } finally {
+      if (timeoutHandle) clearTimeout(timeoutHandle)
     }
   }
 
@@ -362,19 +374,20 @@ export class CDPClient {
   }
 
   onConsoleMessage(callback: (message: any) => void): void {
+    if (!this.client) {
+      throw new Error('CDP client not connected')
+    }
     // Store the listener; if connected, ensure it's attached via shared handler
     this.consoleListeners.push(callback)
-    if (this.client) {
-      // Re-attach all to be safe; Chrome client ignores duplicate handler bindings per instance
-      this.attachQueuedListeners()
-    }
+    this.attachQueuedListeners()
   }
 
   onNetworkRequest(callback: (request: any) => void): void {
-    this.networkListeners.push(callback)
-    if (this.client) {
-      this.attachQueuedListeners()
+    if (!this.client) {
+      throw new Error('CDP client not connected')
     }
+    this.networkListeners.push(callback)
+    this.attachQueuedListeners()
   }
 
   isConnected(): boolean {

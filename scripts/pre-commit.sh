@@ -7,15 +7,15 @@ echo "🔍 Running pre-commit checks..."
 
 # Run formatting
 echo "  Formatting code..."
-npm run format
+pnpm run format
 
 # Run linting
 echo "  Linting code..."
-npm run lint
+pnpm run lint
 
 # Run type checking
 echo "  Type checking..."
-npx tsc --noEmit
+pnpm exec tsc --noEmit
 
 # Stage formatted files
 echo "  Staging formatted files..."

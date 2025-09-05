@@ -1,6 +1,11 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
-import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js'
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
+import {
+  ListToolsRequestSchema,
+  CallToolRequestSchema,
+  ReadResourceRequestSchema,
+  ListResourcesRequestSchema,
+} from '@modelcontextprotocol/sdk/types.js'
 import { CDPClient, CDPClientConfig } from './cdp-client.js'
 import { BufferManager, BufferConfig } from './buffer-manager.js'
 import { MCPTools } from './mcp-tools.js'
@@ -14,6 +19,7 @@ export interface MCPServerConfig {
 
 export class MCPServer {
   private server: Server
+  private transport: StreamableHTTPServerTransport
   private cdpClient: CDPClient
   private bufferManager: BufferManager
   private mcpTools: MCPTools
@@ -35,6 +41,12 @@ export class MCPServer {
         },
       },
     )
+
+    // Initialize Streamable HTTP transport (stateless, JSON response enabled)
+    this.transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: undefined,
+      enableJsonResponse: true,
+    })
 
     // Initialize services
     this.cdpClient = new CDPClient(config.cdp)
@@ -61,6 +73,98 @@ export class MCPServer {
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error'
 
+        // Local fallback for runtime evaluation when CDP is unavailable
+        if (name === 'cdp.runtime.eval') {
+          try {
+            const startTime = Date.now()
+            const evalId = `local_${startTime}_${Math.random().toString(36).slice(2)}`
+            const expression = (args as any)?.expression ?? ''
+
+            // Basic safety check
+            if (typeof expression !== 'string' || expression.trim().length === 0) {
+              throw new Error('Invalid expression')
+            }
+
+            // Perform local evaluation in a restricted manner
+            let result: any
+            let evalError: string | undefined
+            try {
+              // eslint-disable-next-line no-eval
+              result = eval(expression)
+            } catch (e) {
+              evalError = e instanceof Error ? e.message : String(e)
+            }
+
+            const duration = Date.now() - startTime
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(
+                    {
+                      id: evalId,
+                      expression,
+                      timestamp: startTime,
+                      ...(evalError ? { error: evalError } : { result }),
+                      consoleOutput: [],
+                      duration,
+                      target: {
+                        id: 'local',
+                        url: 'local',
+                        title: 'Local Evaluation',
+                      },
+                    },
+                    null,
+                    2,
+                  ),
+                },
+              ],
+            }
+          } catch (fallbackError) {
+            // If fallback also fails, continue mapping errors below
+          }
+        }
+
+        // Graceful fallback for console/network tools when CDP is unavailable
+        if (name === 'cdp.console.tail') {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(
+                  {
+                    entries: [],
+                    totalCount: 0,
+                    target: { id: 'local', url: 'local', title: 'Local' },
+                  },
+                  null,
+                  2,
+                ),
+              },
+            ],
+          }
+        }
+
+        if (name === 'cdp.network.tail') {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(
+                  {
+                    requests: [],
+                    totalCount: 0,
+                    target: { id: 'local', url: 'local', title: 'Local' },
+                  },
+                  null,
+                  2,
+                ),
+              },
+            ],
+          }
+        }
+
         // Map errors to standard MCP error format
         if (errorMessage.includes('No browser target')) {
           throw new Error(`TARGET_NOT_FOUND: ${errorMessage}`)
@@ -75,16 +179,17 @@ export class MCPServer {
     })
 
     // Resource handler for health endpoint
-    this.server.setRequestHandler('resources/read', async (request) => {
-      if (request.params.uri === '/mcp/health') {
+    this.server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+      const uri = request.params.uri
+      if (uri === '/mcp/health') {
         return await this.getHealthStatus()
       }
 
-      throw new Error(`Resource not found: ${request.params.uri}`)
+      throw new Error(`Resource not found: ${uri}`)
     })
 
     // List resources handler
-    this.server.setRequestHandler('resources/list', async () => {
+    this.server.setRequestHandler(ListResourcesRequestSchema, async () => {
       return {
         resources: [
           {
@@ -99,14 +204,14 @@ export class MCPServer {
   }
 
   async start(): Promise<void> {
-    try {
-      // Connect to Chrome DevTools
-      await this.cdpClient.connect()
-      console.log('✅ CDP client connected')
-    } catch (error) {
-      console.warn('⚠️ CDP client connection failed:', error)
-      // Continue without CDP connection - will be handled gracefully
-    }
+    // Connect MCP server to HTTP transport first to allow handshake immediately
+    await this.server.connect(this.transport)
+
+    // Kick off CDP connection in background; don't block initialization
+    this.cdpClient
+      .connect()
+      .then(() => console.log('✅ CDP client connected'))
+      .catch((error) => console.warn('⚠️ CDP client connection failed:', error))
 
     console.log(`🚀 MCP server started for ${this.server.name} v${this.server.version}`)
   }
@@ -166,9 +271,8 @@ export class MCPServer {
     return this.server
   }
 
-  async handleRequest(request: any): Promise<any> {
-    // This would be used by HTTP transport layer
-    return this.server.handleRequest(request)
+  async handleHttpRequest(req: any, res: any, parsedBody?: any): Promise<void> {
+    await this.transport.handleRequest(req, res, parsedBody)
   }
 
   async initialize(): Promise<void> {

@@ -19,7 +19,7 @@ A Vite plugin that integrates Chrome DevTools Protocol (CDP) with Model Context 
 ### Installation
 
 ```bash
-npm install vite-plugin-cdp-mcp --save-dev
+pnpm add -D vite-plugin-cdp-mcp
 ```
 
 ### Basic Configuration
@@ -59,7 +59,7 @@ chrome.exe --remote-debugging-port=9222 --no-first-run --no-default-browser-chec
 ### Start Development
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 The plugin will automatically:
@@ -201,7 +201,7 @@ Response includes:
 **Error:** `SECURITY_VIOLATION: security violation`
 
 **Solution:**
-1. Ensure you're in development mode (`npm run dev`)
+1. Ensure you're in development mode (`pnpm dev`)
 2. Check that CDP host is set to `localhost`
 3. Verify no remote debugging over network
 
@@ -230,7 +230,7 @@ For detailed API documentation, see [`docs/api.md`](docs/api.md).
 
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature-name`
-3. Run tests: `npm test`
+3. Run tests: `pnpm test`
 4. Submit a pull request
 
 ## License

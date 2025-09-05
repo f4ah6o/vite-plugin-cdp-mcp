@@ -9,7 +9,7 @@ const responseSchema = healthResource.responseSchema
 
 function formatErrors(errors: ErrorObject[] | null | undefined): string {
   if (!errors || errors.length === 0) return ''
-  return errors.map((e) => `${e.instancePath} ${e.message}`).join('; ')
+  return errors.map((e) => `${e.instancePath} [${e.keyword}] ${e.message}`).join('; ')
 }
 
 describe('T007 Contract: /mcp/health endpoint schema', () => {

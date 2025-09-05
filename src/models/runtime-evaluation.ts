@@ -13,7 +13,8 @@ export interface RuntimeEvaluation {
 }
 
 // Zod schema for the base evaluation fields
-export const RuntimeEvaluationSchema = z
+// Define a base schema as a ZodObject so it can be extended
+const RuntimeEvaluationBaseSchema = z
   .object({
     id: z.string({ required_error: 'id is required' }).min(1, 'id cannot be empty'),
     expression: z
@@ -31,17 +32,18 @@ export const RuntimeEvaluationSchema = z
       .min(0, 'duration must be non-negative'),
   })
   .strict()
-  .refine(
-    (data) => {
-      // Either result or error should be present, but not both
-      const hasResult = data.result !== undefined
-      const hasError = data.error !== undefined
-      return hasResult !== hasError // XOR logic
-    },
-    {
+
+// Public schema with XOR validation for general validation use
+export const RuntimeEvaluationSchema = RuntimeEvaluationBaseSchema.superRefine((data, ctx) => {
+  const hasResult = data.result !== undefined
+  const hasError = data.error !== undefined
+  if (hasResult === hasError) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
       message: 'Either result or error should be present, but not both',
-    },
-  )
+    })
+  }
+})
 
 // State machine for RuntimeEvaluation lifecycle
 export enum RuntimeEvaluationState {
@@ -53,9 +55,39 @@ export enum RuntimeEvaluationState {
 
 export type StatefulRuntimeEvaluation = RuntimeEvaluation & { state: RuntimeEvaluationState }
 
-export const StatefulRuntimeEvaluationSchema = RuntimeEvaluationSchema.extend({
-  state: z.nativeEnum(RuntimeEvaluationState),
-}).strict()
+// Extend from the base object schema so that `.extend` is valid
+export const StatefulRuntimeEvaluationSchema = RuntimeEvaluationBaseSchema
+  .extend({
+    state: z.nativeEnum(RuntimeEvaluationState),
+  })
+  .strict()
+  .superRefine((data, ctx) => {
+    const hasResult = data.result !== undefined
+    const hasError = data.error !== undefined
+    if (data.state === RuntimeEvaluationState.Completed) {
+      if (!hasResult || hasError) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Completed evaluations must include result and no error',
+        })
+      }
+    } else if (data.state === RuntimeEvaluationState.Failed) {
+      if (!hasError || hasResult) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Failed evaluations must include error and no result',
+        })
+      }
+    } else {
+      // Created/Executed should not include result or error
+      if (hasResult || hasError) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Created/Executed evaluations must not include result or error',
+        })
+      }
+    }
+  })
 
 // Valid transitions map
 const VALID_TRANSITIONS: Record<RuntimeEvaluationState, RuntimeEvaluationState[]> = {
@@ -78,7 +110,8 @@ export function isValidTransition(
 export function createRuntimeEvaluation(
   input: z.input<typeof RuntimeEvaluationSchema>,
 ): StatefulRuntimeEvaluation {
-  const data = RuntimeEvaluationSchema.parse(input)
+  // Allow creating an evaluation without result/error (interim state)
+  const data = RuntimeEvaluationBaseSchema.parse(input)
   return { ...data, state: RuntimeEvaluationState.Created }
 }
 

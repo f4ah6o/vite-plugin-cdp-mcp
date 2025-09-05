@@ -55,7 +55,7 @@ export class CircularBuffer<T> {
   }
 
   // Expose configured capacity
-  capacity(): number {
+  getCapacity(): number {
     return this.capacity
   }
 
@@ -183,11 +183,11 @@ export class BufferManager {
     return {
       console: {
         size: this.consoleBuffer.size(),
-        capacity: this.consoleBuffer.capacity(),
+        capacity: this.consoleBuffer.getCapacity(),
       },
       network: {
         size: this.networkBuffer.size(),
-        capacity: this.networkBuffer.capacity(),
+        capacity: this.networkBuffer.getCapacity(),
       },
     }
   }

@@ -19,6 +19,8 @@ export class CDPClient {
   private reconnectAttempts = 0
   private maxReconnectAttempts = 3
   private reconnectDelay = 1000
+  private consoleListeners: Array<(message: any) => void> = []
+  private networkListeners: Array<(event: any) => void> = []
 
   constructor(config: CDPClientConfig) {
     this.config = config
@@ -59,6 +61,9 @@ export class CDPClient {
       // Update target state
       this.target = toActive(toAttached(this.target))
       this.reconnectAttempts = 0
+
+      // Attach any queued listeners now that we have a client
+      this.attachQueuedListeners()
     } catch (error) {
       await this.handleConnectionError(error)
     }
@@ -126,6 +131,62 @@ export class CDPClient {
     }
   }
 
+  private attachQueuedListeners(): void {
+    if (!this.client) return
+
+    // Console listeners
+    if (this.consoleListeners.length > 0) {
+      this.client.Console.messageAdded((params: any) => {
+        for (const cb of this.consoleListeners) {
+          try {
+            cb(params.message)
+          } catch (e) {
+            // Swallow listener errors to avoid breaking others
+          }
+        }
+      })
+    }
+
+    // Network listeners
+    if (this.networkListeners.length > 0) {
+      this.client.Network.requestWillBeSent((params: any) => {
+        const event = { type: 'requestWillBeSent', ...params }
+        for (const cb of this.networkListeners) {
+          try {
+            cb(event)
+          } catch {}
+        }
+      })
+
+      this.client.Network.responseReceived((params: any) => {
+        const event = { type: 'responseReceived', ...params }
+        for (const cb of this.networkListeners) {
+          try {
+            cb(event)
+          } catch {}
+        }
+      })
+
+      this.client.Network.requestFinished((params: any) => {
+        const event = { type: 'requestFinished', ...params }
+        for (const cb of this.networkListeners) {
+          try {
+            cb(event)
+          } catch {}
+        }
+      })
+
+      this.client.Network.requestFailed((params: any) => {
+        const event = { type: 'requestFailed', ...params }
+        for (const cb of this.networkListeners) {
+          try {
+            cb(event)
+          } catch {}
+        }
+      })
+    }
+  }
+
   async disconnect(): Promise<void> {
     if (this.client) {
       try {
@@ -160,47 +221,19 @@ export class CDPClient {
   }
 
   onConsoleMessage(callback: (message: any) => void): void {
-    if (!this.client) {
-      throw new Error('CDP client not connected')
+    // Store the listener; if connected, ensure it's attached via shared handler
+    this.consoleListeners.push(callback)
+    if (this.client) {
+      // Re-attach all to be safe; Chrome client ignores duplicate handler bindings per instance
+      this.attachQueuedListeners()
     }
-
-    this.client.Console.messageAdded((params: any) => {
-      callback(params.message)
-    })
   }
 
   onNetworkRequest(callback: (request: any) => void): void {
-    if (!this.client) {
-      throw new Error('CDP client not connected')
+    this.networkListeners.push(callback)
+    if (this.client) {
+      this.attachQueuedListeners()
     }
-
-    this.client.Network.requestWillBeSent((params: any) => {
-      callback({
-        type: 'requestWillBeSent',
-        ...params,
-      })
-    })
-
-    this.client.Network.responseReceived((params: any) => {
-      callback({
-        type: 'responseReceived',
-        ...params,
-      })
-    })
-
-    this.client.Network.requestFinished((params: any) => {
-      callback({
-        type: 'requestFinished',
-        ...params,
-      })
-    })
-
-    this.client.Network.requestFailed((params: any) => {
-      callback({
-        type: 'requestFailed',
-        ...params,
-      })
-    })
   }
 
   isConnected(): boolean {

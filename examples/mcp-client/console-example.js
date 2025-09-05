@@ -2,9 +2,9 @@
 
 /**
  * Example MCP client for consuming console logs from vite-plugin-cdp-mcp
- * 
+ *
  * Usage: node console-example.js
- * 
+ *
  * Prerequisites:
  * 1. Start Chrome with: chrome --remote-debugging-port=9222
  * 2. Run Vite dev server with the plugin configured
@@ -24,8 +24,8 @@ async function callMCPTool(toolName, args = {}) {
     method: 'tools/call',
     params: {
       name: toolName,
-      arguments: args
-    }
+      arguments: args,
+    },
   }
 
   try {
@@ -34,7 +34,7 @@ async function callMCPTool(toolName, args = {}) {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(request)
+      body: JSON.stringify(request),
     })
 
     if (!response.ok) {
@@ -42,7 +42,7 @@ async function callMCPTool(toolName, args = {}) {
     }
 
     const result = await response.json()
-    
+
     if (result.error) {
       throw new Error(`MCP Error: ${result.error.message}`)
     }
@@ -56,31 +56,30 @@ async function callMCPTool(toolName, args = {}) {
 
 async function main() {
   console.log('🔍 Retrieving console logs from Chrome...')
-  
+
   try {
     // Get recent error logs
     console.log('\n📋 Recent error logs:')
     const errorLogs = await callMCPTool('cdp.console.tail', {
       count: 10,
-      level: 'error'
+      level: 'error',
     })
-    
+
     console.log(JSON.stringify(JSON.parse(errorLogs.content[0].text), null, 2))
 
     // Get all recent logs
     console.log('\n📋 Recent console activity:')
     const allLogs = await callMCPTool('cdp.console.tail', {
       count: 20,
-      since: Date.now() - 60000  // Last minute
+      since: Date.now() - 60000, // Last minute
     })
-    
-    console.log(JSON.stringify(JSON.parse(allLogs.content[0].text), null, 2))
 
+    console.log(JSON.stringify(JSON.parse(allLogs.content[0].text), null, 2))
   } catch (error) {
     console.error('❌ Error:', error.message)
     console.log('\n💡 Troubleshooting:')
     console.log('1. Ensure Chrome is running with --remote-debugging-port=9222')
-    console.log('2. Make sure Vite dev server is running on localhost:5173')  
+    console.log('2. Make sure Vite dev server is running on localhost:5173')
     console.log('3. Check that a tab is open at http://localhost:5173')
     console.log('4. Verify the CDP-MCP plugin is configured correctly')
   }

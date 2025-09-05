@@ -37,9 +37,9 @@ describe('T027 Unit: Error handling', () => {
     })
 
     it('handleRuntimeEval throws when no target', async () => {
-      await expect(
-        tools.handleRuntimeEval({ expression: '1+1', timeout: 500 }),
-      ).rejects.toThrow(/No browser target available/)
+      await expect(tools.handleRuntimeEval({ expression: '1+1', timeout: 500 })).rejects.toThrow(
+        /No browser target available/,
+      )
     })
   })
 
@@ -61,14 +61,15 @@ describe('T027 Unit: Error handling', () => {
 
   describe('Security validator: destructive expressions blocked', () => {
     it('blocks setting location', () => {
-      expect(() => assertExpressionSafe("location = 'http://example.com'"))
-        .toThrow(/security violation/)
+      expect(() => assertExpressionSafe("location = 'http://example.com'")).toThrow(
+        /security violation/,
+      )
     })
 
     it('blocks using fetch', () => {
-      expect(() => assertExpressionSafe("fetch('http://example.com')"))
-        .toThrow(/security violation/)
+      expect(() => assertExpressionSafe("fetch('http://example.com')")).toThrow(
+        /security violation/,
+      )
     })
   })
 })
-

@@ -1,5 +1,5 @@
 import type { Plugin, ViteDevServer } from 'vite'
-import { HTTPServerTransport } from '@modelcontextprotocol/sdk/server/http.js'
+// HTTP transport not used directly in plugin - handled via middleware
 import { MCPServer, MCPServerConfig } from '../services/mcp-server.js'
 import {
   validatePluginConfig,

@@ -125,7 +125,7 @@ describe('T026 Unit: Model Validation', () => {
       expect(isNetworkRequest(input)).toBe(true)
       expect(parseNetworkRequest(input)).toEqual(input)
 
-      const withStatus = { ...input, status: 200, duration: 12.5, responseHeaders: { 'x': 'y' } }
+      const withStatus = { ...input, status: 200, duration: 12.5, responseHeaders: { x: 'y' } }
       expect(() => NetworkRequestSchema.parse(withStatus)).not.toThrow()
     })
 
@@ -286,9 +286,7 @@ describe('T026 Unit: Model Validation', () => {
         id: 'e1',
         expression: '1+1',
         timestamp: now,
-        consoleOutput: [
-          { level: 'log', timestamp: now, message: 'm', source: 'a.ts:1:1' },
-        ],
+        consoleOutput: [{ level: 'log', timestamp: now, message: 'm', source: 'a.ts:1:1' }],
         duration: 0,
       }
 
@@ -356,4 +354,3 @@ describe('T026 Unit: Model Validation', () => {
     })
   })
 })
-

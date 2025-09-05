@@ -1,7 +1,11 @@
 import { describe, it, expect } from 'vitest'
 
 import { BufferManager, CircularBuffer } from '../../src/services/buffer-manager.js'
-import { ConsoleEntryState, createConsoleEntry, toBuffered } from '../../src/models/console-entry.js'
+import {
+  ConsoleEntryState,
+  createConsoleEntry,
+  toBuffered,
+} from '../../src/models/console-entry.js'
 import {
   NetworkRequestState,
   createNetworkRequest,
@@ -44,7 +48,11 @@ describe('T025 Unit: Buffer Management', () => {
   })
 
   describe('BufferManager - console buffer', () => {
-    const makeEntry = (level: 'log' | 'info' | 'warn' | 'error' | 'debug', ts: number, msg: string) =>
+    const makeEntry = (
+      level: 'log' | 'info' | 'warn' | 'error' | 'debug',
+      ts: number,
+      msg: string,
+    ) =>
       toBuffered(
         createConsoleEntry({
           level,
@@ -114,7 +122,12 @@ describe('T025 Unit: Buffer Management', () => {
       const updated = toUpdated({ ...created, timestamp: 1100 })
       bm.addNetworkRequest(updated)
 
-      const completed = toCompleted({ ...updated, status: 200, duration: 50, responseHeaders: { 'Content-Type': 'application/json' } })
+      const completed = toCompleted({
+        ...updated,
+        status: 200,
+        duration: 50,
+        responseHeaders: { 'Content-Type': 'application/json' },
+      })
       bm.addNetworkRequest(completed)
 
       const res = bm.queryNetworkRequests()
@@ -227,4 +240,3 @@ describe('T025 Unit: Buffer Management', () => {
     })
   })
 })
-

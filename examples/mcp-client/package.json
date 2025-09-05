@@ -5,7 +5,7 @@
   "description": "MCP client examples for vite-plugin-cdp-mcp",
   "scripts": {
     "console": "node console-example.js",
-    "network": "node network-example.js", 
+    "network": "node network-example.js",
     "eval": "node eval-example.js",
     "health": "curl -s http://localhost:5173/mcp/health | jq ."
   },

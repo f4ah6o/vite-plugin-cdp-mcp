@@ -43,7 +43,7 @@ describe('T025 Unit: Buffer Management', () => {
     it('exposes configured capacity', () => {
       const cap = 5
       const buf = new CircularBuffer<boolean>(cap)
-      expect(buf.capacity()).toBe(cap)
+      expect(buf.getCapacity()).toBe(cap)
     })
   })
 

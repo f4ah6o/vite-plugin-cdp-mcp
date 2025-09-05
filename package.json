@@ -28,6 +28,17 @@
     "mcp",
     "chrome-devtools-protocol",
     "model-context-protocol"
-  ]
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.5",
+    "chrome-remote-interface": "^0.33.3",
+    "vite": "^7.1.4",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.2.3",
+    "@types/node": "^24.3.1",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
 }
-

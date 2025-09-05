@@ -17,7 +17,7 @@ async function createTestServer() {
       (cdpMcpPlugin as any)({
         port: 9222,
         mcpPath: '/mcp',
-        bufferSize: { console: 100, network: 50 }
+        bufferSize: { console: 100, network: 50 },
       }),
     ],
   })
@@ -31,10 +31,10 @@ describe('T010 Integration: Vite Plugin Lifecycle', () => {
 
   it('starts development server with plugin successfully', async () => {
     server = await createTestServer()
-    
+
     // Should start without errors
     await expect(server.listen()).resolves.toBeDefined()
-    
+
     // Server should be listening
     const address = server.httpServer?.address()
     expect(address).toBeTruthy()
@@ -50,11 +50,9 @@ describe('T010 Integration: Vite Plugin Lifecycle', () => {
     // Check that our plugin is in the middleware stack
     const middlewares = server.middlewares.stack
     expect(Array.isArray(middlewares)).toBe(true)
-    
+
     // Should have our /mcp route handler
-    const mcpHandler = middlewares.find(layer => 
-      layer.route && layer.route.includes('/mcp')
-    )
+    const mcpHandler = middlewares.find((layer) => layer.route && layer.route.includes('/mcp'))
     expect(mcpHandler).toBeDefined()
   })
 
@@ -67,12 +65,12 @@ describe('T010 Integration: Vite Plugin Lifecycle', () => {
     // Trigger HMR update (simulate file change)
     const moduleGraph = server.moduleGraph
     const modules = Array.from(moduleGraph.urlToModuleMap.keys())
-    
+
     // Plugin should not interfere with HMR
     expect(() => {
       server!.ws.send({
         type: 'update',
-        updates: []
+        updates: [],
       })
     }).not.toThrow()
 
@@ -80,7 +78,7 @@ describe('T010 Integration: Vite Plugin Lifecycle', () => {
     const address = server.httpServer!.address()
     const port = typeof address === 'object' && address ? address.port : 3000
     const baseURL = `http://127.0.0.1:${port}`
-    
+
     // Simple connectivity test to /mcp endpoint
     try {
       const response = await fetch(`${baseURL}/mcp`)
@@ -100,13 +98,13 @@ describe('T010 Integration: Vite Plugin Lifecycle', () => {
     }
 
     const serverRef = server
-    
+
     // Should close without throwing
     await expect(serverRef.close()).resolves.toBeUndefined()
-    
+
     // Server should be closed
     expect(serverRef.httpServer?.listening).toBeFalsy()
-    
+
     server = undefined
   })
 
@@ -117,22 +115,22 @@ describe('T010 Integration: Vite Plugin Lifecycle', () => {
       logLevel: 'error',
       plugins: [
         // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-        (cdpMcpPlugin as any)()
+        (cdpMcpPlugin as any)(),
       ],
       build: {
         write: false, // Don't actually write files in test
         rollupOptions: {
           input: {
             // Create a minimal entry point for build test
-            main: 'data:text/javascript,export default "test"'
-          }
-        }
-      }
+            main: 'data:text/javascript,export default "test"',
+          },
+        },
+      },
     })
 
     // Build should complete successfully
     expect(buildResult).toBeDefined()
-    
+
     // In development-only plugin, it should not affect production build
     // The plugin should detect non-dev mode and become a no-op
   })

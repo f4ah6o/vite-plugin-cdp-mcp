@@ -170,4 +170,3 @@ describe('T004 Contract: cdp.console.tail schemas', () => {
     })
   })
 })
-

@@ -33,7 +33,8 @@ describe('T007 Contract: /mcp/health endpoint schema', () => {
         plugin: { version: '0.1.1', uptime: 5678 },
       }
       const valid = validate(data)
-      if (!valid) throw new Error(`Expected valid degraded payload: ${formatErrors(validate.errors)}`)
+      if (!valid)
+        throw new Error(`Expected valid degraded payload: ${formatErrors(validate.errors)}`)
     })
 
     it('accepts unhealthy state', () => {
@@ -43,7 +44,8 @@ describe('T007 Contract: /mcp/health endpoint schema', () => {
         plugin: { version: '0.1.2', uptime: 1 },
       }
       const valid = validate(data)
-      if (!valid) throw new Error(`Expected valid unhealthy payload: ${formatErrors(validate.errors)}`)
+      if (!valid)
+        throw new Error(`Expected valid unhealthy payload: ${formatErrors(validate.errors)}`)
     })
   })
 
@@ -133,4 +135,3 @@ describe('T007 Contract: /mcp/health endpoint schema', () => {
     })
   })
 })
-

@@ -86,7 +86,11 @@ describe('T008 Integration: Chrome CDP Connection', () => {
       }
 
       // Establish a CDP session to the selected target
-      const client = await CDP({ host: HOST, port: PORT, target: (t: any) => t.id === preferred.id })
+      const client = await CDP({
+        host: HOST,
+        port: PORT,
+        target: (t: any) => t.id === preferred.id,
+      })
       // Sanity: enable a common domain and then close
       await client.Page.enable()
       await client.close()
@@ -105,7 +109,9 @@ describe('T008 Integration: Chrome CDP Connection', () => {
     if (vitePage) {
       // Suitable target exists already (localhost:5173). Nothing to create; treat as pass.
       // eslint-disable-next-line no-console
-      console.warn('[cdp-connection] Found existing localhost:5173 target; skipping auto-creation path.')
+      console.warn(
+        '[cdp-connection] Found existing localhost:5173 target; skipping auto-creation path.',
+      )
       expect(true).toBe(true)
       return
     }
@@ -127,4 +133,3 @@ describe('T008 Integration: Chrome CDP Connection', () => {
     // Optional cleanup: do not close the page to avoid interfering with developer's session
   })
 })
-

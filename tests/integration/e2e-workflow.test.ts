@@ -22,7 +22,7 @@ beforeAll(async () => {
       (cdpMcpPlugin as any)({
         port: 9222,
         mcpPath: '/mcp',
-        bufferSize: { console: 1000, network: 100 }
+        bufferSize: { console: 1000, network: 100 },
       }),
     ],
   })
@@ -57,17 +57,17 @@ describe('T011 Integration: End-to-End Workflow', () => {
       // Step 1: Call cdp.console.tail tool
       const result = await client.callTool({
         name: 'cdp.console.tail',
-        arguments: { count: 10, level: 'log' }
+        arguments: { count: 10, level: 'log' },
       })
 
       // Should get a response with proper structure
       expect(result).toBeDefined()
       expect(result.content).toBeDefined()
       expect(Array.isArray(result.content)).toBe(true)
-      
+
       const textContent = result.content.find((c: any) => c.type === 'text')
       expect(textContent).toBeDefined()
-      
+
       // Response should indicate console entries or Chrome connection status
       const text = (textContent as any)?.text || ''
       expect(typeof text).toBe('string')
@@ -79,11 +79,11 @@ describe('T011 Integration: End-to-End Workflow', () => {
 
       // Test different log levels
       const levels = ['log', 'warn', 'error', 'info', 'debug'] as const
-      
+
       for (const level of levels) {
         const result = await client.callTool({
           name: 'cdp.console.tail',
-          arguments: { count: 5, level }
+          arguments: { count: 5, level },
         })
 
         expect(result.content).toBeDefined()
@@ -100,7 +100,7 @@ describe('T011 Integration: End-to-End Workflow', () => {
       // Step 1: Call cdp.network.tail tool
       const result = await client.callTool({
         name: 'cdp.network.tail',
-        arguments: { count: 20, method: 'GET' }
+        arguments: { count: 20, method: 'GET' },
       })
 
       // Should get response with network request structure
@@ -110,7 +110,7 @@ describe('T011 Integration: End-to-End Workflow', () => {
 
       const textContent = result.content.find((c: any) => c.type === 'text')
       expect(textContent).toBeDefined()
-      
+
       // Response should contain network information or connection status
       const text = (textContent as any)?.text || ''
       expect(typeof text).toBe('string')
@@ -124,7 +124,7 @@ describe('T011 Integration: End-to-End Workflow', () => {
       for (const method of methods) {
         const result = await client.callTool({
           name: 'cdp.network.tail',
-          arguments: { count: 10, method }
+          arguments: { count: 10, method },
         })
         expect(result.content).toBeDefined()
       }
@@ -132,7 +132,7 @@ describe('T011 Integration: End-to-End Workflow', () => {
       // Test status filtering
       const result = await client.callTool({
         name: 'cdp.network.tail',
-        arguments: { count: 10, status: 200 }
+        arguments: { count: 10, status: 200 },
       })
       expect(result.content).toBeDefined()
     })
@@ -145,11 +145,11 @@ describe('T011 Integration: End-to-End Workflow', () => {
       // Step 1: Evaluate simple expression
       const result = await client.callTool({
         name: 'cdp.runtime.eval',
-        arguments: { 
+        arguments: {
           expression: 'const result = 2 + 3; console.log("Calculation:", result); result * 10;',
           awaitPromise: false,
-          timeout: 5000
-        }
+          timeout: 5000,
+        },
       })
 
       // Should get evaluation results
@@ -159,7 +159,7 @@ describe('T011 Integration: End-to-End Workflow', () => {
 
       const textContent = result.content.find((c: any) => c.type === 'text')
       expect(textContent).toBeDefined()
-      
+
       // Response should contain evaluation result or Chrome connection status
       const text = (textContent as any)?.text || ''
       expect(typeof text).toBe('string')
@@ -171,18 +171,18 @@ describe('T011 Integration: End-to-End Workflow', () => {
       // Test basic expression
       const basic = await client.callTool({
         name: 'cdp.runtime.eval',
-        arguments: { expression: '1 + 1' }
+        arguments: { expression: '1 + 1' },
       })
       expect(basic.content).toBeDefined()
 
       // Test with promise (even if Chrome not available, should not throw)
       const promise = await client.callTool({
-        name: 'cdp.runtime.eval', 
-        arguments: { 
+        name: 'cdp.runtime.eval',
+        arguments: {
           expression: 'Promise.resolve(42)',
           awaitPromise: true,
-          timeout: 1000
-        }
+          timeout: 1000,
+        },
       })
       expect(promise.content).toBeDefined()
     })
@@ -194,12 +194,12 @@ describe('T011 Integration: End-to-End Workflow', () => {
 
       // All tools should respond gracefully when Chrome is not available
       // rather than throwing unhandled exceptions
-      
+
       const consoleResult = await client.callTool({
         name: 'cdp.console.tail',
-        arguments: { count: 1 }
+        arguments: { count: 1 },
       })
-      
+
       // Should not throw, may contain error message about Chrome availability
       expect(consoleResult).toBeDefined()
       expect(consoleResult.content || consoleResult.error).toBeDefined()
@@ -211,12 +211,12 @@ describe('T011 Integration: End-to-End Workflow', () => {
       // Test invalid JavaScript syntax
       const result = await client.callTool({
         name: 'cdp.runtime.eval',
-        arguments: { expression: 'invalid javascript syntax {' }
+        arguments: { expression: 'invalid javascript syntax {' },
       })
 
       // Should get error response, not throw exception
       expect(result).toBeDefined()
-      
+
       // Either content with error message or error field should be present
       const hasContent = result.content && result.content.length > 0
       const hasError = result.error
@@ -229,14 +229,14 @@ describe('T011 Integration: End-to-End Workflow', () => {
       if (!client) throw new Error('MCP client not initialized')
 
       const start = Date.now()
-      
+
       await client.callTool({
         name: 'cdp.console.tail',
-        arguments: { count: 10 }
+        arguments: { count: 10 },
       })
-      
+
       const duration = Date.now() - start
-      
+
       // Should respond within reasonable time even if Chrome not available
       // Allowing more generous timeout for test environment
       expect(duration).toBeLessThan(5000)
@@ -249,11 +249,11 @@ describe('T011 Integration: End-to-End Workflow', () => {
       const promises = [
         client.callTool({ name: 'cdp.console.tail', arguments: { count: 5 } }),
         client.callTool({ name: 'cdp.network.tail', arguments: { count: 5 } }),
-        client.callTool({ name: 'cdp.runtime.eval', arguments: { expression: '1' } })
+        client.callTool({ name: 'cdp.runtime.eval', arguments: { expression: '1' } }),
       ]
 
       const results = await Promise.all(promises)
-      
+
       // All should complete without throwing
       expect(results).toHaveLength(3)
       for (const result of results) {

@@ -105,7 +105,7 @@ describe('T005 Contract: cdp.network.tail schemas', () => {
             timestamp: 1725540000123,
             duration: 12.34,
             failed: false,
-            requestHeaders: { 'accept': 'application/json' },
+            requestHeaders: { accept: 'application/json' },
             responseHeaders: { 'content-type': 'application/json' },
           },
           {
@@ -195,4 +195,3 @@ describe('T005 Contract: cdp.network.tail schemas', () => {
     })
   })
 })
-

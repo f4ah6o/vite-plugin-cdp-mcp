@@ -82,11 +82,9 @@ describe('T009 Integration: MCP server via Vite /mcp', () => {
     const names = tools.tools.map((t) => t.name)
     expect(Array.isArray(names)).toBe(true)
     expect(names.length).toBeGreaterThan(0)
-    expect(names).toEqual(expect.arrayContaining([
-      'cdp.console.tail',
-      'cdp.network.tail',
-      'cdp.runtime.eval',
-    ]))
+    expect(names).toEqual(
+      expect.arrayContaining(['cdp.console.tail', 'cdp.network.tail', 'cdp.runtime.eval']),
+    )
 
     await client.close()
   })
@@ -109,11 +107,12 @@ describe('T009 Integration: MCP server via Vite /mcp', () => {
     // The exact shape will depend on implementation, but we expect a text content response
     expect(result).toBeDefined()
     expect(result.content).toBeDefined()
-    const text = result.content.find((c: any) => c.type === 'text') as { type: string; text: string } | undefined
+    const text = result.content.find((c: any) => c.type === 'text') as
+      | { type: string; text: string }
+      | undefined
     expect(text).toBeDefined()
     expect(text?.text).toMatch(/2/) // should contain evaluation result
 
     await client.close()
   })
 })
-

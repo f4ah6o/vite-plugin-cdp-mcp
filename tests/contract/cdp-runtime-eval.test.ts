@@ -102,7 +102,7 @@ describe('T006 Contract: cdp.runtime.eval schemas', () => {
     it('accepts a valid error output with error message', () => {
       const data = {
         id: 'eval-2',
-        expression: 'throw new Error(\'x\')',
+        expression: "throw new Error('x')",
         timestamp: 1725541000456,
         error: 'x',
         duration: 1.23,
@@ -188,4 +188,3 @@ describe('T006 Contract: cdp.runtime.eval schemas', () => {
     })
   })
 })
-

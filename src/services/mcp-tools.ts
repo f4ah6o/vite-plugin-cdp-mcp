@@ -1,6 +1,7 @@
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
 import { CDPClient } from './cdp-client.js'
+import { assertExpressionSafe } from '../lib/security-validator.js'
 import { BufferManager, QueryOptions } from './buffer-manager.js'
 import { createConsoleEntry, toBuffered, toStreamed } from '../models/console-entry.js'
 import {
@@ -252,6 +253,9 @@ export class MCPTools {
     })
 
     try {
+      // Enforce read-only eval policy in development
+      assertExpressionSafe(input.expression)
+
       evaluation = toExecuted(evaluation)
 
       // Execute the expression

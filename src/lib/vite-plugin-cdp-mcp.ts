@@ -1,27 +1,21 @@
 import type { Plugin, ViteDevServer } from 'vite'
 import { HTTPServerTransport } from '@modelcontextprotocol/sdk/server/http.js'
 import { MCPServer, MCPServerConfig } from '../services/mcp-server.js'
+import {
+  validatePluginConfig,
+  type PluginConfig as ValidatorPluginConfig,
+} from './config-validator.js'
+import {
+  ensureDevelopmentMode,
+  validateLocalCDP,
+  warnRemoteDebuggingRisks,
+} from './security-validator.js'
 
-export interface PluginConfig {
-  port?: number
-  mcpPath?: string
-  bufferSize?: {
-    console?: number
-    network?: number
-  }
-}
-
-const DEFAULT_CONFIG: Required<PluginConfig> = {
-  port: 9222,
-  mcpPath: '/mcp',
-  bufferSize: {
-    console: 1000,
-    network: 100,
-  },
-}
+export interface PluginConfig extends ValidatorPluginConfig {}
 
 export default function cdpMcpPlugin(userConfig: PluginConfig = {}): Plugin {
-  const config = { ...DEFAULT_CONFIG, ...userConfig }
+  const { config, warnings } = validatePluginConfig(userConfig)
+  for (const w of warnings) console.warn(`vite-plugin-cdp-mcp: ${w}`)
   let mcpServer: MCPServer | null = null
   let isProduction = false
 
@@ -40,6 +34,19 @@ export default function cdpMcpPlugin(userConfig: PluginConfig = {}): Plugin {
       }
 
       console.log('🔧 CDP-MCP plugin: Configuring development server')
+
+      // Enforce development-only and localhost:9222 CDP
+      try {
+        ensureDevelopmentMode({ isProduction })
+        validateLocalCDP({ host: 'localhost', port: config.port })
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        console.error(`Security policy violation: ${msg}`)
+        throw e
+      }
+
+      // Warn prominently about remote debugging risks
+      warnRemoteDebuggingRisks()
 
       // Initialize MCP server
       const mcpConfig: MCPServerConfig = {

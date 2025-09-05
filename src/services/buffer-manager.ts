@@ -32,7 +32,7 @@ export class CircularBuffer<T> {
 
   getAll(): T[] {
     const result: T[] = []
-    
+
     // Start from the oldest item (next index) and go full circle
     for (let i = 0; i < this.capacity; i++) {
       const index = (this.nextIndex + i) % this.capacity
@@ -41,12 +41,12 @@ export class CircularBuffer<T> {
         result.push(item)
       }
     }
-    
+
     return result
   }
 
   size(): number {
-    return this.items.filter(item => item !== undefined).length
+    return this.items.filter((item) => item !== undefined).length
   }
 
   clear(): void {
@@ -77,11 +77,11 @@ export class BufferManager {
 
     // Apply filters
     if (options.level) {
-      entries = entries.filter(entry => entry.level === options.level)
+      entries = entries.filter((entry) => entry.level === options.level)
     }
 
     if (options.since) {
-      entries = entries.filter(entry => entry.timestamp >= options.since!)
+      entries = entries.filter((entry) => entry.timestamp >= options.since!)
     }
 
     // Sort by timestamp (chronological order)
@@ -96,11 +96,11 @@ export class BufferManager {
 
     return {
       entries: entries.map(({ state, ...entry }) => entry), // Remove state from response
-      totalCount
+      totalCount,
     }
   }
 
-  // Network buffer methods  
+  // Network buffer methods
   addNetworkRequest(request: StatefulNetworkRequest): void {
     // Check if request already exists and update it
     const existingIndex = this.findNetworkRequestIndex(request.requestId)
@@ -114,7 +114,7 @@ export class BufferManager {
 
   private findNetworkRequestIndex(requestId: string): number {
     const requests = this.networkBuffer.getAll()
-    return requests.findIndex(req => req?.requestId === requestId)
+    return requests.findIndex((req) => req?.requestId === requestId)
   }
 
   queryNetworkRequests(options: QueryOptions = {}): {
@@ -125,15 +125,15 @@ export class BufferManager {
 
     // Apply filters
     if (options.method) {
-      requests = requests.filter(req => req.method === options.method)
+      requests = requests.filter((req) => req.method === options.method)
     }
 
     if (options.status) {
-      requests = requests.filter(req => req.status === options.status)
+      requests = requests.filter((req) => req.status === options.status)
     }
 
     if (options.domain) {
-      requests = requests.filter(req => {
+      requests = requests.filter((req) => {
         try {
           const url = new URL(req.url)
           return url.hostname.includes(options.domain!)
@@ -144,7 +144,7 @@ export class BufferManager {
     }
 
     if (options.since) {
-      requests = requests.filter(req => req.timestamp >= options.since!)
+      requests = requests.filter((req) => req.timestamp >= options.since!)
     }
 
     // Sort by timestamp (chronological order)
@@ -159,7 +159,7 @@ export class BufferManager {
 
     return {
       requests: requests.map(({ state, ...request }) => request), // Remove state from response
-      totalCount
+      totalCount,
     }
   }
 
@@ -171,12 +171,12 @@ export class BufferManager {
     return {
       console: {
         size: this.consoleBuffer.size(),
-        capacity: 1000 // From data model spec
+        capacity: 1000, // From data model spec
       },
       network: {
         size: this.networkBuffer.size(),
-        capacity: 100 // From data model spec
-      }
+        capacity: 100, // From data model spec
+      },
     }
   }
 

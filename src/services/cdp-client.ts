@@ -1,5 +1,11 @@
 import CDP from 'chrome-remote-interface'
-import { BrowserTarget, createBrowserTarget, selectPriorityTarget, toAttached, toActive } from '../models/browser-target.js'
+import {
+  BrowserTarget,
+  createBrowserTarget,
+  selectPriorityTarget,
+  toAttached,
+  toActive,
+} from '../models/browser-target.js'
 
 export interface CDPClientConfig {
   port: number
@@ -22,10 +28,10 @@ export class CDPClient {
     try {
       // Discover available targets
       const targets = await this.discoverTargets()
-      
+
       // Select priority target (localhost:5173 first)
       this.target = selectPriorityTarget(targets)
-      
+
       if (!this.target) {
         // Create a new target if none suitable found
         await this.createNewTarget()
@@ -36,10 +42,10 @@ export class CDPClient {
       }
 
       // Connect to the selected target
-      this.client = await CDP({ 
+      this.client = await CDP({
         target: this.target.id,
         port: this.config.port,
-        host: this.config.host
+        host: this.config.host,
       })
 
       // Enable required domains
@@ -47,45 +53,46 @@ export class CDPClient {
         this.client.Runtime.enable(),
         this.client.Console.enable(),
         this.client.Network.enable(),
-        this.client.Page.enable()
+        this.client.Page.enable(),
       ])
 
       // Update target state
       this.target = toActive(toAttached(this.target))
       this.reconnectAttempts = 0
-
     } catch (error) {
       await this.handleConnectionError(error)
     }
   }
 
   private async discoverTargets(): Promise<BrowserTarget[]> {
-    const targets = await CDP.List({ 
-      port: this.config.port, 
-      host: this.config.host 
+    const targets = await CDP.List({
+      port: this.config.port,
+      host: this.config.host,
     })
-    
+
     return targets
       .filter((target: any) => target.type === 'page' && target.webSocketDebuggerUrl)
-      .map((target: any) => createBrowserTarget({
-        id: target.id,
-        url: target.url,
-        title: target.title || '',
-        type: 'page',
-        attached: false,
-        canAttach: true,
-        lastActivity: Date.now()
-      }))
+      .map((target: any) =>
+        createBrowserTarget({
+          id: target.id,
+          url: target.url,
+          title: target.title || '',
+          type: 'page',
+          attached: false,
+          canAttach: true,
+          lastActivity: Date.now(),
+        }),
+      )
   }
 
   private async createNewTarget(): Promise<void> {
     try {
-      const newTarget = await CDP.New({ 
+      const newTarget = await CDP.New({
         url: 'http://localhost:5173',
         port: this.config.port,
-        host: this.config.host
+        host: this.config.host,
       })
-      
+
       this.target = createBrowserTarget({
         id: newTarget.id,
         url: newTarget.url,
@@ -93,7 +100,7 @@ export class CDPClient {
         type: 'page',
         attached: false,
         canAttach: true,
-        lastActivity: Date.now()
+        lastActivity: Date.now(),
       })
     } catch (error) {
       // Failed to create new target, will use existing if available
@@ -105,13 +112,17 @@ export class CDPClient {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++
       const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1)
-      
-      console.warn(`CDP connection failed, retrying in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
-      
-      await new Promise(resolve => setTimeout(resolve, delay))
+
+      console.warn(
+        `CDP connection failed, retrying in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`,
+      )
+
+      await new Promise((resolve) => setTimeout(resolve, delay))
       await this.connect()
     } else {
-      throw new Error(`Failed to connect to Chrome DevTools after ${this.maxReconnectAttempts} attempts: ${error.message}`)
+      throw new Error(
+        `Failed to connect to Chrome DevTools after ${this.maxReconnectAttempts} attempts: ${error.message}`,
+      )
     }
   }
 
@@ -142,7 +153,7 @@ export class CDPClient {
       expression,
       awaitPromise: true,
       returnByValue: true,
-      timeout: timeout
+      timeout: timeout,
     })
 
     return Promise.race([evaluationPromise, timeoutPromise])
@@ -166,28 +177,28 @@ export class CDPClient {
     this.client.Network.requestWillBeSent((params: any) => {
       callback({
         type: 'requestWillBeSent',
-        ...params
+        ...params,
       })
     })
 
     this.client.Network.responseReceived((params: any) => {
       callback({
         type: 'responseReceived',
-        ...params
+        ...params,
       })
     })
 
     this.client.Network.requestFinished((params: any) => {
       callback({
         type: 'requestFinished',
-        ...params
+        ...params,
       })
     })
 
     this.client.Network.requestFailed((params: any) => {
       callback({
         type: 'requestFailed',
-        ...params
+        ...params,
       })
     })
   }
@@ -208,14 +219,14 @@ export class CDPClient {
     try {
       // Simple health check by getting browser version
       await this.client.Browser.getVersion()
-      return { 
-        status: 'healthy', 
-        target: this.target 
+      return {
+        status: 'healthy',
+        target: this.target,
       }
     } catch (error) {
-      return { 
-        status: 'degraded', 
-        target: this.target 
+      return {
+        status: 'degraded',
+        target: this.target,
       }
     }
   }

@@ -5,50 +5,188 @@ import {
   selectPriorityTarget,
   toAttached,
   toActive,
+  StatefulBrowserTarget,
+  BrowserTargetState,
 } from '../models/browser-target.js'
 
+// Enhanced TypeScript interfaces for CDP
 export interface CDPClientConfig {
   port: number
   host: string
+  maxReconnectAttempts?: number
+  reconnectDelay?: number
+  connectionTimeout?: number
+}
+
+export interface CDPTarget {
+  id: string
+  title: string
+  type: string
+  url: string
+  webSocketDebuggerUrl?: string
+  devtoolsFrontendUrl?: string
+  faviconUrl?: string
+}
+
+export interface CDPConsoleMessage {
+  level: 'log' | 'debug' | 'info' | 'warn' | 'error'
+  text: string
+  timestamp: number
+  source?: 'xml' | 'javascript' | 'network' | 'console-api' | 'storage' | 'appcache' | 'rendering' | 'security' | 'deprecation' | 'worker' | 'violation' | 'intervention' | 'recommendation' | 'other'
+  line?: number
+  column?: number
+  url?: string
+  args?: Array<{
+    type: string
+    value?: any
+    description?: string
+  }>
+}
+
+export interface CDPNetworkEvent {
+  type: 'requestWillBeSent' | 'responseReceived' | 'requestFinished' | 'requestFailed'
+  requestId: string
+  timestamp: number
+  request?: {
+    url: string
+    method: string
+    headers: Record<string, string>
+    postData?: string
+  }
+  response?: {
+    url: string
+    status: number
+    statusText: string
+    headers: Record<string, string>
+    mimeType: string
+  }
+  error?: {
+    errorText: string
+    canceled?: boolean
+    blockedReason?: string
+  }
+}
+
+export interface CDPRuntimeEvaluation {
+  result?: {
+    type: string
+    value?: any
+    description?: string
+    className?: string
+  }
+  exceptionDetails?: {
+    exceptionId: number
+    text: string
+    lineNumber: number
+    columnNumber: number
+    scriptId?: string
+    url?: string
+    stackTrace?: {
+      callFrames: Array<{
+        functionName: string
+        scriptId: string
+        url: string
+        lineNumber: number
+        columnNumber: number
+      }>
+    }
+  }
+  executionContextId?: number
+}
+
+export interface CDPHealthStatus {
+  status: 'healthy' | 'degraded' | 'disconnected' | 'error'
+  target?: StatefulBrowserTarget
+  lastError?: string
+  connectionUptime?: number
+  reconnectCount?: number
+}
+
+export type ConsoleMessageCallback = (message: CDPConsoleMessage) => void
+export type NetworkEventCallback = (event: CDPNetworkEvent) => void
+
+export class CDPConnectionError extends Error {
+  constructor(message: string, public originalError?: Error) {
+    super(message)
+    this.name = 'CDPConnectionError'
+  }
+}
+
+export class CDPTargetError extends Error {
+  constructor(message: string, public targetId?: string) {
+    super(message)
+    this.name = 'CDPTargetError'
+  }
+}
+
+export class CDPEvaluationError extends Error {
+  constructor(message: string, public details?: any) {
+    super(message)
+    this.name = 'CDPEvaluationError'
+  }
 }
 
 export class CDPClient {
   private config: CDPClientConfig
   private client: any = null
-  private target: BrowserTarget | null = null
+  private target: StatefulBrowserTarget | null = null
   private reconnectAttempts = 0
-  private maxReconnectAttempts = 3
-  private reconnectDelay = 1000
-  private consoleListeners: Array<(message: any) => void> = []
-  private networkListeners: Array<(event: any) => void> = []
+  private maxReconnectAttempts: number
+  private reconnectDelay: number
+  private connectionTimeout: number
+  private connectionStartTime?: number
+  private consoleListeners: Set<ConsoleMessageCallback> = new Set()
+  private networkListeners: Set<NetworkEventCallback> = new Set()
+  private consoleHandlerAttached = false
+  private networkHandlerAttached = false
 
   constructor(config: CDPClientConfig) {
     this.config = config
+    this.maxReconnectAttempts = config.maxReconnectAttempts ?? 3
+    this.reconnectDelay = config.reconnectDelay ?? 1000
+    this.connectionTimeout = config.connectionTimeout ?? 10000
   }
 
   async connect(): Promise<void> {
+    if (this.client) {
+      return // Already connected
+    }
+
     try {
-      // Discover available targets
-      const targets = await this.discoverTargets()
+      this.connectionStartTime = Date.now()
+      
+      // Discover available targets with timeout
+      const targets = await this.withTimeout(
+        this.discoverTargets(),
+        this.connectionTimeout,
+        'Target discovery timeout'
+      )
 
       // Select priority target (localhost:5173 first)
-      this.target = selectPriorityTarget(targets)
+      let selectedTarget = selectPriorityTarget(targets)
 
-      if (!this.target) {
+      if (!selectedTarget) {
         // Create a new target if none suitable found
-        await this.createNewTarget()
+        selectedTarget = await this.createNewTarget()
       }
 
-      if (!this.target) {
-        throw new Error('No suitable browser target found and unable to create new target')
+      if (!selectedTarget) {
+        throw new CDPTargetError('No suitable browser target found and unable to create new target')
       }
 
-      // Connect to the selected target
-      this.client = await CDP({
-        target: this.target.id,
-        port: this.config.port,
-        host: this.config.host,
-      })
+      // Convert to StatefulBrowserTarget if needed
+      this.target = selectedTarget.state ? selectedTarget as StatefulBrowserTarget : createBrowserTarget(selectedTarget)
+
+      // Connect to the selected target with timeout
+      this.client = await this.withTimeout(
+        CDP({
+          target: this.target.id,
+          port: this.config.port,
+          host: this.config.host,
+        }),
+        this.connectionTimeout,
+        `Connection timeout to target ${this.target.id}`
+      )
 
       // Enable required domains
       await Promise.all([
@@ -62,8 +200,11 @@ export class CDPClient {
       this.target = toActive(toAttached(this.target))
       this.reconnectAttempts = 0
 
-      // Attach any queued listeners now that we have a client
-      this.attachQueuedListeners()
+      // Attach event listeners
+      await this.attachEventListeners()
+      
+      // Attach any queued callbacks to the event listeners
+      this.setupEventHandlers()
     } catch (error) {
       await this.handleConnectionError(error)
     }

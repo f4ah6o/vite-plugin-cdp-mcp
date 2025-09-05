@@ -218,6 +218,21 @@ The plugin is designed for optimal development experience:
 
 See the [`examples/`](examples/) directory for:
 - Basic Vite project setup
+
+## Scripts (pnpm)
+
+- `pnpm dev`: run Vite dev server with the plugin
+- `pnpm test`: run all tests (Vitest)
+- `pnpm run check`: lint/check with Biome
+- `pnpm build`: build distributable (CJS+ESM+d.ts to `dist/`)
+
+## CI & Publishing
+
+- CI runs on GitHub Actions with pnpm (see `.github/workflows/ci.yml`)
+- Publishing is automated via `.github/workflows/publish.yml`
+  - Configure `NPM_TOKEN` secret in your repository settings
+  - Trigger by creating a GitHub Release or running the workflow manually
+  - Local publish: `pnpm build && pnpm publish --access public`
 - Advanced configuration examples
 - MCP client integration samples
 - Error handling patterns
@@ -242,3 +257,9 @@ MIT License - see [LICENSE](LICENSE) file for details.
 - [Chrome DevTools Protocol](https://chromedevtools.github.io/devtools-protocol/)
 - [Model Context Protocol](https://modelcontextprotocol.io/)
 - [Vite](https://vitejs.dev/)
+
+## Made with
+
+- [spec-kit](https://github.com/github/spec-kit)
+- [claude code](https://www.npmjs.com/package/@anthropic-ai/claude-code)
+- [codex](https://www.npmjs.com/package/@openai/codex)

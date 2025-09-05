@@ -1,6 +1,6 @@
 import type { Plugin, ViteDevServer } from 'vite'
 // HTTP transport not used directly in plugin - handled via middleware
-import { MCPServer, MCPServerConfig } from '../services/mcp-server.js'
+import { MCPServer, type MCPServerConfig } from '../services/mcp-server.js'
 import {
   validatePluginConfig,
   type PluginConfig as ValidatorPluginConfig,
@@ -98,9 +98,9 @@ export default function cdpMcpPlugin(userConfig: PluginConfig = {}): Plugin {
       })
 
       // Initialize MCP server when dev server starts
-      const originalListen = server.listen
-      server.listen = function (...args: any[]) {
-        const result = originalListen.apply(this, args)
+      const originalListen = (server.listen as any).bind(server)
+      ;(server as any).listen = function (...args: any[]) {
+        const result = originalListen.apply(server, args)
 
         // Start MCP server after Vite server is listening
         if (result && typeof result.then === 'function') {
@@ -131,11 +131,11 @@ export default function cdpMcpPlugin(userConfig: PluginConfig = {}): Plugin {
         }
 
         return result
-      }
+      } as any
 
       // Cleanup when server closes
-      const originalClose = server.close
-      server.close = async function (...args: any[]) {
+      const originalClose = (server.close as any).bind(server)
+      ;(server as any).close = async function (...args: any[]) {
         if (mcpServer) {
           try {
             await mcpServer.shutdown()
@@ -145,8 +145,8 @@ export default function cdpMcpPlugin(userConfig: PluginConfig = {}): Plugin {
           }
         }
 
-        return originalClose.apply(this, args)
-      }
+        return originalClose.apply(server, args)
+      } as any
     },
 
     buildStart() {

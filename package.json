@@ -5,6 +5,7 @@
   "private": false,
   "license": "MIT",
   "type": "module",
+  "sideEffects": false,
   "files": [
     "dist"
   ],
@@ -17,6 +18,9 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     }
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -31,11 +35,13 @@
   ],
   "packageManager": "pnpm@10.15.1",
   "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --outDir dist --clean",
     "lint": "biome lint .",
     "format": "biome format . --write",
     "check": "biome check .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prepublishOnly": "pnpm build && pnpm test"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.5",
@@ -48,6 +54,7 @@
     "@types/node": "^24.3.1",
     "@types/node-fetch": "^2.6.13",
     "ajv": "^8.17.1",
+    "tsup": "^8.1.0",
     "node-fetch": "^3.3.2",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"

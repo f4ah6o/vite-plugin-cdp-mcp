@@ -4,9 +4,11 @@ export default defineConfig({
   test: {
     // Group tests by area as per project structure
     include: [
-      'tests/contract/**/*.test.ts',
-      'tests/integration/**/*.test.ts',
-      'tests/unit/**/*.test.ts',
+      // Globs are relative to `dir`
+      'contract/**/*.test.ts',
+      'integration/**/*.test.ts',
+      'unit/**/*.test.ts',
+      'performance/**/*.test.ts',
     ],
     exclude: ['**/node_modules/**', 'dist/**'],
     environment: 'node',

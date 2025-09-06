@@ -16,3 +16,8 @@ pnpm-debug.log*
 # Environment variables
 .env
 .env*.local
+
+# Purged directories
+templates/
+specs/
+memory/
